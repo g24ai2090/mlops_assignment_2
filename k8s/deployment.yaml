@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: faces-app
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: faces
+  template:
+    metadata:
+      labels:
+        app: faces
+    spec:
+      containers:
+      - name: app
+        image: yourdockerhubusername/mlops-assignment:latest
+        ports:
+        - containerPort: 5000
+        imagePullPolicy: Always
