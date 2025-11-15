@@ -1,52 +1,43 @@
-from flask import Flask, request
-import torch
+# app.py
+from flask import Flask, request, render_template_string
 from PIL import Image
 import numpy as np
-from io import BytesIO
+import joblib
+import io
 import base64
 
 app = Flask(__name__)
+model = joblib.load('savedmodel.pth')
 
-# Load quantized model
-model = torch.load('savedmodel.pth', map_location='cpu')
-model.eval()
+HTML = '''
+<h1>Olivetti Faces Classifier</h1>
+<form method="post" enctype="multipart/form-data">
+    <input type="file" name="file" accept="image/*">
+    <input type="submit" value="Predict">
+</form>
+{% if pred %}
+<h2>Predicted Person ID: {{ pred }}</h2>
+<img src="data:image/png;base64,{{ img }}" style="max-width:400px;">
+{% endif %}
+'''
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
-    pred_text = ""
-    img_b64 = ""
-    if request.method == 'POST' and 'file' in request.files:
+    pred = None
+    img = None
+    if request.method == 'POST':
         file = request.files['file']
-        if file.filename != '':
-            stream = file.stream
-            stream.seek(0)
-            original_img = Image.open(stream)
-            stream.seek(0)
-            img = Image.open(stream).convert('L').resize((64, 64))
-            
-            arr = np.array(img) / 255.0
-            tensor = torch.from_numpy(arr).unsqueeze(0).unsqueeze(0).float()
-            
-            with torch.no_grad():
-                pred = int(model(tensor).argmax(1).item())
-            
-            pred_text = f"<h2>Predicted Person ID: {pred}</h2>"
-            
-            buffered = BytesIO()
-            original_img.save(buffered, format="PNG")
-            img_b64 = base64.b64encode(buffered.getvalue()).decode()
+        original = Image.open(file.stream)
+        img_pil = original.convert('L').resize((64, 64))
+        arr = np.array(img_pil).flatten() / 255.0
+        arr = arr.reshape(1, -1)
+        pred = int(model.predict(arr)[0])
 
-            img_tag = f'<img src="data:image/png;base64,{img_b64}" style="max-width:600px;"><br>(original uploaded image)'
+        buffered = io.BytesIO()
+        original.save(buffered, format="PNG")
+        img = base64.b64encode(buffered.getvalue()).decode()
 
-            return f"<h1>Olivetti Faces Classifier</h1>{pred_text}{img_tag}<br><a href='/'>Try another</a>"
+    return render_template_string(HTML, pred=pred, img=img)
 
-    return '''
-    <h1>Upload a face image (will be resized to 64x64 grayscale)</h1>
-    <form method="post" enctype="multipart/form-data">
-        <input type="file" name="file" accept="image/*" required>
-        <input type="submit" value="Predict">
-    </form>
-    '''
-    
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
