@@ -5,17 +5,17 @@ WORKDIR /app
 
 # Install dependencies
 COPY requirements.txt .
-RUN pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy source code
-COPY train.py test.py app.py ./
+# Copy source files
+COPY train.py .
+COPY app.py .
 
-# --- TRAIN & QUANTIZE MODEL DURING BUILD ---
+# Train model inside container
 RUN python train.py
 
-# Expose port
+# Expose Flask port
 EXPOSE 5000
 
-# Run Flask
+# Run app
 CMD ["python", "app.py"]
