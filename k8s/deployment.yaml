@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: app
-        image: yourdockerhubusername/mlops-assignment:latest
+        image: sayedocker123/mlops-assignment:latest
         ports:
         - containerPort: 5000
         imagePullPolicy: Always
